@@ -1,0 +1,210 @@
+# -*- coding: utf-8 -*-
+import operator
+import xlrd
+from itertools import product
+import nltk
+#nltk.download('wordnet')
+from nltk.corpus import wordnet as wn
+import tokenize
+import collections
+from operator import itemgetter
+from sklearn.feature_extraction.text import CountVectorizer
+from numpy  import array
+from sklearn import metrics
+from sklearn.naive_bayes import GaussianNB
+from sklearn import preprocessing
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
+from sklearn import svm
+from imblearn.over_sampling import SMOTE
+from sklearn.cross_validation import train_test_split
+import os
+import lmdb
+from random import random
+from gensim import corpora, models, similarities
+import gensim
+from numpy  import array
+import xlrd
+#nltk.download('averaged_perceptron_tagger')
+sentences = []
+path = "/home/raksha/FIRE-2016/CHIS_TrainingData/query.xlsx"    
+book = xlrd.open_workbook(path)
+first_sheet = book.sheet_by_index(0)
+print first_sheet.nrows
+for i in range(0,first_sheet.nrows):
+     #print first_sheet.row_values(i)
+     cell = first_sheet.cell(i,0)
+     sent= cell.value
+     sentences.append(sent)
+
+verbose = False
+ratio = 'auto'
+model_loaded = models.Doc2Vec.load('/home/raksha/FIRE-2016/query_vec.doc2vec')
+query_list =[]
+Caretakers= model_loaded.docvecs["sent_2"]
+query_list.append(Caretakers)
+
+Consultants= model_loaded.docvecs["sent_3"]
+query_list.append(Consultants)
+
+Doctors= model_loaded.docvecs["sent_4"]
+query_list.append(Doctors)
+
+Irrelevants= model_loaded.docvecs["sent_5"]
+query_list.append(Irrelevants)
+
+Medical_journalists= model_loaded.docvecs["sent_6"]
+query_list.append(Medical_journalists)
+
+q1 = query_list[0]
+
+
+input_list1 =[]
+
+
+myfile = open("/home/raksha/FIRE-2016/CHIS_TrainingData/q1.txt", "w") 
+
+path = "/home/raksha/FIRE-2016/CHIS_TrainingData/does_sun_exposure_cause_skin_cancer_final.xlsx"    
+#path = "/home/raksha/FIRE-2016/CHIS_TrainingData/ecigarettes_final.xlsx"
+#path = "/home/raksha/FIRE-2016/CHIS_TrainingData/MMRVaccineLeadToAutism_final.xlsx"
+#path = "/home/raksha/FIRE-2016/CHIS_TrainingData/vitaminC_common_cold_final.xlsx"
+#path = "/home/raksha/FIRE-2016/CHIS_TrainingData/women_should_Take_HRT_Post_Menopause_final.xlsx" 
+
+
+
+
+
+
+model_loaded = models.Doc2Vec.load('/home/raksha/FIRE-2016/q1_sentences.doc2vec')
+book = xlrd.open_workbook(path)
+first_sheet = book.sheet_by_index(0)
+output_file = open("/home/raksha/FIRE-2016/CHIS_TrainingData/q1_op.txt", "w") 
+deep_list =[]
+for i in range(1,first_sheet.nrows):
+     k=i+1
+     string =  "sent_"+ str(k)
+     data1 = model_loaded.docvecs[string]
+     data1 = list(data1) 
+     deep_list.append(data1)
+     #print first_sheet.row_values(i)
+     cell3 =  first_sheet.cell(i,1)
+     if cell3.value == "relevant":
+          cell = first_sheet.cell(i,0)
+          #sentences.append(sent)
+          t = cell.value.encode('UTF-8') 
+          myfile.write(t+"\n")  
+          output_file.write("1"+"\n")  
+     else:
+          cell = first_sheet.cell(i,0)
+          #sentences.append(sent)
+          t = cell.value.encode('UTF-8') 
+          myfile.write(t+"\n")  
+          output_file.write("0"+"\n")    
+             
+          
+myfile.close()         
+output_file.close()   
+myfile = open("/home/raksha/FIRE-2016/CHIS_TrainingData/q1.txt", "r") 
+tags = myfile.readlines()
+
+
+
+
+
+
+for i in range(len(tags)):
+  tags[i] = str(q1) + tags[i] #query,sentence pair
+
+with open("/home/raksha/FIRE-2016/CHIS_TrainingData/q1_op.txt") as input:
+    grades = [line.split(",") for line in input.read().splitlines()] 
+
+
+bigram_vectorizer =TfidfVectorizer(ngram_range=(1, 2),token_pattern=r'\b\w+\b', min_df=1) # unigram + bigrams
+X_2 = bigram_vectorizer.fit_transform(tags).toarray()
+
+
+input_list1 = array(X_2)
+print "-----------------------------------------------------"
+print len(input_list1[0])
+
+for j in range(len(input_list1)):
+   np.append(input_list1[j],deep_list[j])
+print "-----------------------------------------------------"
+print len(input_list1[0])
+
+input_list1= preprocessing.normalize(input_list1, norm='l1')
+output_list1 = array(grades)
+#OS = RandomOverSampler(ratio=ratio
+ratio = 'auto'
+
+smote = SMOTE(ratio=ratio, kind='regular')
+osx,osy = smote.fit_sample(input_list1,output_list1)
+#data_train, data_test, labels_train, labels_test = train_test_split(osx,osy, test_size=0.3)
+
+import nltk
+from sklearn import cross_validation
+from sklearn.cross_validation import KFold, cross_val_score
+#k_fold = KFold(len(osx), n_folds=5, shuffle=True, random_state=0)
+
+
+# make predictions
+#expected = labels_test
+#predicted = model.predict(data_test)
+# summarize the fit of the model
+
+#l= cross_val_score(model, osx, osy, cv=k_fold, n_jobs=1)
+#print reduce(lambda x, y: x + y, l) / len(l)
+
+#------------------------------------------------------------------------------------------------------------
+path = "/home/raksha/FIRE-2016/CHIS_testSet/final_fire_test_data_xls/skincancer.xlsx"    
+book = xlrd.open_workbook(path)
+test_sheet = book.sheet_by_index(0)
+print test_sheet.nrows
+test_list=[]
+for i in range(1,test_sheet.nrows):
+     #print first_sheet.row_values(i)
+     cell = first_sheet.cell(i,0)
+     sent= cell.value
+     test_list.append(sent)
+
+input_list1 =[]
+
+#for i in range(len(test_list)):
+ 
+# tags[i] = str(q1) + test_list[i] #query,sentence pair
+
+model_loaded = models.Doc2Vec.load('q01_test.doc2vec')
+deep_list2 = []
+
+for i in range(1,test_sheet.nrows):
+     string =  "sent_"+ str(i)
+     data1 = model_loaded.docvecs[string]
+     deep_list2.append(data1) 
+
+#for tf_idf
+for i in range(len(test_list)):
+  test_list[i] = str(q1) + test_list[i] #query,sentence pair
+
+bigram_vectorizer =TfidfVectorizer(ngram_range=(1, 2),token_pattern=r'\b\w+\b', min_df=1) # unigram + bigrams
+X_2 = bigram_vectorizer.fit_transform(test_list).toarray()
+
+print len(deep_list2[0])
+print len(X_2[0])
+for j in range(len(X_2)):
+   np.append(X_2[j],deep_list2[j])
+
+#for j in range(len(X_2)):
+  
+  
+#X_2[j] = list(X_2[j])
+ 
+# X_2[j].append(deep_list2[j])
+#test_data = preprocessing.normalize(test_data, norm='l1')
+
+#print len(X_2[0])
+
+model = GaussianNB()
+model.fit(osx,osy)
+model.predict(X_2)
+
